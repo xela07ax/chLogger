@@ -48,7 +48,6 @@ func (p *ChLoger) SignalStoper(prepareExit <-chan bool) {
 type ChLoger struct {
 	Options  *Config
 	batchCnt *mutexCounter
-	wg       sync.WaitGroup
 	process  *mutexRunner
 	ChInLog  chan [4]string //Приемник строк
 	done     chan struct{}  //Сигнал, что пока закругляться
@@ -63,7 +62,7 @@ func NewChLoger(cfg *Config) *ChLoger {
 	if cfg.Dir != "" {
 		FckText(fmt.Sprintf("Создание папки логов: %s", cfg.Dir), CheckMkdir(cfg.Dir))
 	}
-	return &ChLoger{Options: cfg, ChInLog: make(chan [4]string, 100), done: make(chan struct{}), wg: sync.WaitGroup{}, stopX: make(chan bool, 1000), batchCnt: new(mutexCounter), process: new(mutexRunner), GoodBy: make(chan bool)}
+	return &ChLoger{Options: cfg, ChInLog: make(chan [4]string, 100), done: make(chan struct{}), stopX: make(chan bool, 1000), batchCnt: new(mutexCounter), process: new(mutexRunner), GoodBy: make(chan bool)}
 }
 
 type mutexRunner struct {
