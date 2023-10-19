@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func HttpBytes(w http.ResponseWriter, r *http.Request, res []byte) (err error) {
+func HttpBytes(w http.ResponseWriter, res []byte) (err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(res)
@@ -15,7 +15,7 @@ func HttpBytes(w http.ResponseWriter, r *http.Request, res []byte) (err error) {
 	return nil
 }
 
-func Httpjson(w http.ResponseWriter, r *http.Request, res interface{}) (err error) {
+func Httpjson(w http.ResponseWriter, res interface{}) (err error) {
 	detailjson, _ := json.Marshal(res)
-	return HttpBytes(w, r, detailjson)
+	return HttpBytes(w, detailjson)
 }

@@ -155,7 +155,7 @@ func resp(w http.ResponseWriter, r *http.Request, funcName string, text string, 
 		Status:   status,
 		Show:     show,
 	}
-	if err := Httpjson(w, r, Notify); err != nil {
+	if err := Httpjson(w, Notify); err != nil {
 		log.Fatalf("Критическая ошибка, не удалось отправить сообщение в UI: %s| %v", err, Notify)
 	}
 
