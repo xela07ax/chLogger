@@ -1,22 +1,21 @@
-## Канальный вебсокет логер. Плагин для Chlogger
+## Канальный вебсокет логер Ws Logger Plugin. Плагин для Chlogger
 
 ### Описание
 Возможность отправлять команды
 
 ### Примеры
-
+Gin example router. 
 Подключаться к консоли: http://localhost:8187/
 
 ```go
 package main
 
 import (
-	"flag"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/xela07ax/chLogger"
-	"github.com/xela07ax/wsLoggerPlugin"
-	"github.com/xela07ax/wsLoggerPlugin/inputRpc"
-	"net/http"
+	"github.com/xela07ax/chLogger/inputRpc"
+	"github.com/xela07ax/chLogger/wsLoggerPlugin"
 	"time"
 )
 
@@ -48,11 +47,18 @@ func main() {
 	go checkWsConnection(1)
 
 	// Для коннекта нужно прокинуть наружу
-	http.HandleFunc("/", logErWs.HomePageWs)
-	http.HandleFunc("/sentws", logErWs.SentWS)
-	http.HandleFunc("/ws", logErWs.ServeWs)
-	var addr = flag.String("addr", ":8187", "http service address")
-	http.ListenAndServe(*addr, nil)
+	router := gin.New()
+
+	router.GET("/", gin.WrapF(logErWs.HomePageWs))
+	router.GET("/sentws", gin.WrapF(logErWs.SentWS))
+	router.GET("/ws", gin.WrapF(logErWs.ServeWs))
+
+	go checkWsConnection(1)
+	port := "8187"
+	// Listen and serve on defined port
+	Cxlogger <- [4]string{"Welcome", "nil", fmt.Sprintf("Listening on port %s", port)}
+	Cxlogger <- [4]string{"Welcome", "nil", fmt.Sprintf("Please see: http://localhost:%s/", port)}
+	router.Run(":" + port)
 
 }
 
@@ -67,21 +73,6 @@ func checkWsConnection(i int) {
 	fmt.Println("good by")
 }
 
-```
-Gin example router
-```go
-import "github.com/gin-gonic/gin"
-
-// Для коннекта нужно прокинуть наружу
-router := gin.New()
-
-router.GET("/", gin.WrapF(logErWs.HomePageWs))
-router.GET("/sentws", gin.WrapF(logErWs.SentWS))
-router.GET("/ws", gin.WrapF(logErWs.ServeWs))
-
-port := "8187"
-Cxlogger <- [4]string{"Welcome", "nil", fmt.Sprintf("Please see: http://localhost:%s/home", port)}
-router.Run(":" + port)
 ```
 Пример из консоли:
 ```
