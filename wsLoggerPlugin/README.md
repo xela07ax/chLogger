@@ -50,7 +50,6 @@ func main() {
 	router := gin.New()
 
 	router.GET("/", gin.WrapF(logErWs.HomePageWs))
-	router.GET("/sentws", gin.WrapF(logErWs.SentWS))
 	router.GET("/ws", gin.WrapF(logErWs.ServeWs))
 
 	go checkWsConnection(1)
