@@ -37,3 +37,43 @@ func main() {
 
 }
 ```
+
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/xela07ax/chLogger"
+	"time"
+)
+
+var Cxlogger chan [4]string
+
+func main() {
+	fmt.Println("Testing ch logger")
+	logEr := chLogger.NewChLoger(&chLogger.Config{
+		ConsolFilterFn: map[string]int{"Front Http Server": 0},
+		ConsolFilterUn: map[string]int{"Pooling": 1},
+		Mode:           0,
+		Dir:            "x-loger",
+	})
+	logEr.RunLogerDaemon()
+	Cxlogger = logEr.ChInLog
+	Cxlogger <- [4]string{"Welcome", "nil", "Вас приветствует Silika-FileКонтроллер v1.1"}
+	go checkWsConnection(1)
+	time.Sleep(1 * time.Minute)
+}
+
+func checkWsConnection(i int) {
+	// Запускаем таймер для периодической проверки состояния соединения
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+	Cxlogger <- [4]string{"checkWsConnection", "nil", fmt.Sprintf("Запускаем таймер для периодической проверки:%d", i)}
+	for range ticker.C {
+		Cxlogger <- [4]string{"checkWsConnection", "nil", fmt.Sprintf("проверка подключения:%d. Ошибка |ok", i), "ERROR"}
+	}
+	fmt.Println("good by")
+}
+```
+
