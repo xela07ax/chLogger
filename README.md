@@ -32,6 +32,7 @@ func main() {
 	logEr.RunLogerDaemon()
 	logEr.ChInLog <- [4]string{"Welcome", "nil", "Вас приветствует Silika-FileКонтроллер v1.1"}
 	fmt.Println("-main->wait")
+	logEr.ChInLog <- [4]string{"Welcome", "nil", "Передаем ошибку", "1"}
 	time.Sleep(1 * time.Second)
 
 }
