@@ -3,7 +3,6 @@ package wsLoggerPlugin
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 )
 
@@ -31,19 +30,6 @@ func (hub *WsLogger) ServeWs(w http.ResponseWriter, r *http.Request) {
 	// новых goroutines.
 	go client.writePump()
 	go client.readPump()
-}
-
-// serveWs handles websocket requests from the peer.
-func (hub *WsLogger) SentWS(w http.ResponseWriter, r *http.Request) {
-	hub.Loger <- [4]string{"WsLogger", "SentWS", "input http client"}
-	msgRaw := readBodySimple(w, r)
-	if len(msgRaw) == 0 {
-		return
-	}
-	// Реализация Writer-а
-	log.Printf("--W-true> отправили:%s\n", msgRaw)
-	ertx := "-sendMsg->true"
-	resp(w, r, "sendMsg", ertx, 0, true)
 }
 
 func (hub *WsLogger) HomePageWs(w http.ResponseWriter, r *http.Request) {
