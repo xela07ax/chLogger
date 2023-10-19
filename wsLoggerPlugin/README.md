@@ -52,7 +52,6 @@ func main() {
 	router.GET("/", gin.WrapF(logErWs.HomePageWs))
 	router.GET("/ws", gin.WrapF(logErWs.ServeWs))
 
-	go checkWsConnection(1)
 	port := "8187"
 	// Listen and serve on defined port
 	Cxlogger <- [4]string{"Welcome", "nil", fmt.Sprintf("Listening on port %s", port)}
