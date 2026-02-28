@@ -1,80 +1,127 @@
-## Канальный логер
+# chLogger 🚀 (Channel Logger)
 
-### Описание
-Кастомный логгер для быстрой записи событий в ClickHouse. Оптимизирован для high-throughput инжеста данных, минуя стандартные, медленные интерфейсы.
-### Применимость
+**chLogger** — это высокопроизводительный, асинхронный логгер для Go, построенный на основе каналов (channels) и паттерна worker-pool.
 
-Вывод в STDOUT и сразу вывод в файл, группируются файлы по первым ячейкам. Возможность транслировать к подписчикам, к примеру на ws logger. Не надо тянуть тип/пакет, так как всё на стандартных типах, только канал с 4-я текстовыми ячейками. Первая ячейка - это название паета/объекта, вторая - наименование функции/"nil", третья - содержание, четвертая - error("1")/norm(""/"0"). Имеет фильтры по первым двум ячейкам, можно отключать логирование блоков мешающих аналитике исполнения ПО.
-Не задерживает выполнение программы, можно добавлять обработчиков. 
-Не очень хорошо ведет себя при неожиданном завершении программы, можно потерять много логов, поскольку они в очереди! Имейте в виду, объект логера имеет функции корректного завершения.
+Проект создан для минимизации I/O задержек в основном потоке приложения. Оптимизирован для high-throughput инжеста данных: логи отправляются в неблокирующий канал и обрабатываются отдельными горутинами-миньонами. Не требует импорта тяжеловесных структур — всё работает на стандартных типах Go.
 
-### Дополнительно
-Имеет дополнительный запас полезных функций из пакета toolPack/tp)
+## ✨ Ключевые возможности
 
-### Примеры
+* **Асинхронность "из коробки"**: Логи пишутся в буферизированный канал `ChInLog chan [4]string`, не блокируя выполнение бизнес-логики.
+* **Pub/Sub Архитектура и Расширяемость**: Возможность транслировать логи любым подписчикам (через канал `Broadcast`) без изменения ядра логгера.
+* **Real-time WebSocket трансляция**: Встроенный плагин `wsLoggerPlugin` поднимает веб-сервер с готовым UI для стриминга логов прямо в браузер.
+* **HTTP RPC Input**: Логгер может выступать как самостоятельный сервис, принимая JSON-сообщения по HTTP для логирования событий из других микросервисов.
+* **Гибкая маршрутизация и фильтрация**: Возможность фильтрации вывода по имени функции и модулю. Автоматическое группирование логов и ошибок по отдельным файлам.
+
+## 🛠 Формат данных (Контракт)
+
+Взаимодействие с логгером максимально упрощено. Вам не нужно тянуть сложные типы, достаточно отправить в канал массив из 4-х строк (`[4]string`):
+
+* `[0]` **Func** — Наименование функции (или "nil"). Используется для фильтрации (`ConsolFilterFn`).
+* `[1]` **Unit** — Название пакета/объекта (модуля). Используется для фильтрации (`ConsolFilterUn`).
+* `[2]` **Text** — Непосредственно текст лога / полезная нагрузка.
+* `[3]` **Status** — Статус сообщения. Ошибка маркируется как `"1"` или `"ERROR"`, нормальное выполнение — `""` или `"0"`.
+
+## ⚠️ Важно: Graceful Shutdown
+
+Поскольку логи ставятся в очередь (буфер канала), при **неожиданном** (hard crash / panic) завершении программы часть логов может быть потеряна.
+
+Для гарантии записи всех сообщений необходимо использовать методы корректного завершения (`Stop()`), которые дождутся очистки каналов перед выходом.
+
+## 📦 Быстрый старт
+
+### Установка
+
+`go get github.com/xela07ax/chLogger`
+
+### Базовое использование
 
 ```go
 package main
 
 import (
 	"fmt"
-	"github.com/xela07ax/chLogger"
+	"[github.com/xela07ax/chLogger](https://github.com/xela07ax/chLogger)"
 	"time"
 )
 
 func main() {
-	fmt.Println("Testing ch logger")
+	// 1. Конфигурируем логгер
 	logEr := chLogger.NewChLoger(&chLogger.Config{
 		ConsolFilterFn: map[string]int{"Front Http Server": 0},
 		ConsolFilterUn: map[string]int{"Pooling": 1},
 		Mode:           0,
-		Dir:            "x-loger",
+		Dir:            "x-loger", // Директория для файлов логов
 	})
+
+	// 2. Запускаем демона (миньонов)
 	logEr.RunLogerDaemon()
-	logEr.ChInLog <- [4]string{"Welcome", "nil", "Вас приветствует Silika-FileКонтроллер v1.1"}
-	fmt.Println("-main->wait")
-	logEr.ChInLog <- [4]string{"Welcome", "nil", "Передаем ошибку", "1"}
+
+	// 3. Отправляем логи: [Func, Unit, Text, Status]
+	logEr.ChInLog <- [4]string{"Welcome", "nil", "Система успешно запущена", "0"}
+	logEr.ChInLog <- [4]string{"Database", "Connection", "Таймаут подключения", "1"} // 1 = Ошибка
+
+	// Эмуляция работы
 	time.Sleep(1 * time.Second)
 
+	// 4. Корректное завершение (дожидаемся записи всех логов)
+	logEr.Stop()
 }
 ```
 
+## 🔌 Расширяемость: Подключение любых подписчиков
+Благодаря канальной архитектуре, вы не ограничены только записью в файл или консоль. [cite_start]Вы можете передать в конфигурацию любой канал, и логгер будет транслировать туда все события.
+
+Это позволяет легко интегрировать логгер с внешними системами:
 
 ```go
 package main
 
 import (
 	"fmt"
-	"github.com/xela07ax/chLogger"
-	"time"
+	"[github.com/xela07ax/chLogger](https://github.com/xela07ax/chLogger)"
 )
 
-var Cxlogger chan [4]string
-
 func main() {
-	fmt.Println("Testing ch logger")
-	logEr := chLogger.NewChLoger(&chLogger.Config{
-		ConsolFilterFn: map[string]int{"Front Http Server": 0},
-		ConsolFilterUn: map[string]int{"Pooling": 1},
-		Mode:           0,
-		Dir:            "x-loger",
-	})
-	logEr.RunLogerDaemon()
-	Cxlogger = logEr.ChInLog
-	Cxlogger <- [4]string{"Welcome", "nil", "Вас приветствует Silika-FileКонтроллер v1.1"}
-	go checkWsConnection(1)
-	time.Sleep(1 * time.Minute)
-}
+	// 1. Создаем канал для нашего кастомного подписчика
+	myCustomSubscriber := make(chan []byte, 100)
 
-func checkWsConnection(i int) {
-	// Запускаем таймер для периодической проверки состояния соединения
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-	Cxlogger <- [4]string{"checkWsConnection", "nil", fmt.Sprintf("Запускаем таймер для периодической проверки:%d", i)}
-	for range ticker.C {
-		Cxlogger <- [4]string{"checkWsConnection", "nil", fmt.Sprintf("проверка подключения:%d. Ошибка |ok", i), "ERROR"}
+	// 2. Передаем его в логгер
+	cfg := &chLogger.Config{
+		Mode:      1,
+		Dir:       "./logs",
+		Broadcast: myCustomSubscriber, // <--- Интеграция здесь
 	}
-	fmt.Println("good by")
+	
+	logger := chLogger.NewChLoger(cfg)
+	logger.RunLogerDaemon()
+
+	// 3. Запускаем консьюмера в отдельной горутине
+	go func(in <-chan []byte) {
+		for msg := range in {
+			// Здесь может быть абсолютно любая логика:
+			// - Отправка HTTP-запроса в ElasticSearch
+			// - Публикация в брокер сообщений (RabbitMQ / Kafka)
+			// - Отправка алертов об ошибках в Telegram / Slack
+			
+			fmt.Printf("Кастомный подписчик получил лог: %s\n", string(msg))
+		}
+	}(myCustomSubscriber)
+
+	// Отправляем тестовый лог
+	logger.ChInLog <- [4]string{"System", "Network", "Подключение установлено", "OK"}
+	
+	logger.Stop()
 }
 ```
 
+## 🔌 WebSocket Плагин
+Логгер поставляется со встроенным хабом для трансляции логов в веб-браузер.
+```go
+hub := wsLoggerPlugin.NewWsLogger()
+go hub.Run()
+
+// Логгер отправляет данные в hub.broadcast, а хаб раздает их клиентам
+http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+    hub.ServeWs(w, r)
+})
+```
